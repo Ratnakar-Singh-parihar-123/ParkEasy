@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { demoUser } from '../data/parkingData';
+import { demoUser, adminCredentials, adminUser } from '../data/parkingData';
 
 // Demo credentials
 const DEMO_EMAIL = 'user@gmail.com';
@@ -30,13 +30,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    // Validate demo credentials
-    if (email.toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      const userData = { ...demoUser, email: email.toLowerCase() };
+    const lowerEmail = email.toLowerCase();
+    
+    // Check for admin credentials
+    if (lowerEmail === adminCredentials.email && password === adminCredentials.password) {
+      const userData = { ...adminUser, email: lowerEmail };
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
-      return { success: true };
+      return { success: true, isAdmin: true };
     }
+    
+    // Check for demo user credentials
+    if (lowerEmail === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      const userData = { ...demoUser, email: lowerEmail, role: 'user' };
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return { success: true, isAdmin: false };
+    }
+    
     return { success: false, error: 'Invalid email or password' };
   };
 
@@ -48,6 +59,7 @@ export const AuthProvider = ({ children }) => {
         ...demoUser,
         name: name,
         email: email.toLowerCase(),
+        role: 'user',
         memberSince: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       };
       await AsyncStorage.setItem('user', JSON.stringify(userData));
@@ -68,12 +80,15 @@ export const AuthProvider = ({ children }) => {
     setUser(newUserData);
   };
 
+  const isAdmin = user?.role === 'admin';
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
         isLoggedIn: !!user,
+        isAdmin,
         login,
         register,
         logout,

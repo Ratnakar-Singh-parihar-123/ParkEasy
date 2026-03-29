@@ -46,7 +46,11 @@ export default function LoginScreen() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        router.replace('/(tabs)/home');
+        if (result.isAdmin) {
+          router.replace('/(admin)/dashboard');
+        } else {
+          router.replace('/(tabs)/home');
+        }
       } else {
         Alert.alert('Login Failed', result.error || 'Invalid credentials');
       }
@@ -119,7 +123,13 @@ export default function LoginScreen() {
             <View style={styles.demoContainer}>
               <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} />
               <Text style={styles.demoText}>
-                Demo: user@gmail.com / 123456
+                User: user@gmail.com / 123456
+              </Text>
+            </View>
+            <View style={[styles.demoContainer, styles.adminDemoContainer]}>
+              <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+              <Text style={[styles.demoText, styles.adminDemoText]}>
+                Admin: admin@gmail.com / admin123
               </Text>
             </View>
           </View>
@@ -216,6 +226,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     marginLeft: spacing.xs,
+  },
+  adminDemoContainer: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.primary + '10',
+  },
+  adminDemoText: {
+    color: colors.primary,
   },
   footer: {
     flexDirection: 'row',

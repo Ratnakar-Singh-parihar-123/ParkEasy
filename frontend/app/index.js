@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { colors } from '../src/styles/theme';
 
 export default function Index() {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { isLoggedIn, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -16,6 +16,9 @@ export default function Index() {
   }
 
   if (isLoggedIn) {
+    if (isAdmin) {
+      return <Redirect href="/(admin)/dashboard" />;
+    }
     return <Redirect href="/(tabs)/home" />;
   }
 
