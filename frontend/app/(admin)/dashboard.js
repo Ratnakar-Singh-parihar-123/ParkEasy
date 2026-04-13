@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,138 +6,233 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { dashboardStats, allBookings, parkingSpots } from '../../src/data/parkingData';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+  RefreshControl,
+  ActivityIndicator,
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-const StatCard = ({ icon, iconColor, title, value, subtitle, bgColor }) => (
-  <View style={[styles.statCard, { backgroundColor: bgColor || colors.surface }]}>
-    <View style={[styles.statIconContainer, { backgroundColor: iconColor + '20' }]}>
-      <Ionicons name={icon} size={24} color={iconColor} />
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statTitle}>{title}</Text>
-    {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-  </View>
-);
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
 
-const QuickAction = ({ icon, title, onPress, color }) => (
-  <TouchableOpacity style={styles.quickAction} onPress={onPress}>
-    <View style={[styles.quickActionIcon, { backgroundColor: color + '15' }]}>
-      <Ionicons name={icon} size={22} color={color} />
-    </View>
-    <Text style={styles.quickActionText}>{title}</Text>
-  </TouchableOpacity>
-);
+import {
+  getRecentBookings,
+  getDashboardStats,
+} from "../../src/api/dashboardApi";
 
-const RecentBookingItem = ({ booking }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'upcoming': return colors.primary;
-      case 'completed': return colors.success;
-      case 'pending': return colors.warning;
-      case 'cancelled': return colors.danger;
-      default: return colors.textSecondary;
+const { width } = Dimensions.get("window");
+
+export default function AdminDashboard() {
+  const [dashboardStats, setDashboardStats] = useState({});
+  const [allBookings, setAllBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, bookingsRes] = await Promise.all([
+        getDashboardStats(),
+        getRecentBookings(),
+      ]);
+
+      setDashboardStats(statsRes.data.stats);
+
+      const formatted = bookingsRes.data.bookings.map((b) => ({
+        ...b,
+        id: b._id,
+        userName: b.user?.name || "User",
+        parkingName: b.parking?.name || "Parking",
+        totalPrice: Number(b.totalPrice || 0),
+      }));
+
+      setAllBookings(formatted);
+    } catch (error) {
+      console.log("Error fetching dashboard:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  return (
-    <View style={styles.recentBookingItem}>
-      <View style={styles.recentBookingLeft}>
-        <Text style={styles.recentBookingName}>{booking.userName}</Text>
-        <Text style={styles.recentBookingParking}>{booking.parkingName}</Text>
-      </View>
-      <View style={styles.recentBookingRight}>
-        <Text style={styles.recentBookingPrice}>${booking.totalPrice.toFixed(2)}</Text>
-        <View style={[styles.statusDot, { backgroundColor: getStatusColor(booking.status) }]} />
-      </View>
-    </View>
-  );
-};
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
 
-export default function AdminDashboard() {
-  const pendingBookings = allBookings.filter(b => b.status === 'pending').length;
-  const upcomingBookings = allBookings.filter(b => b.status === 'upcoming').length;
-  const recentBookings = allBookings.slice(0, 5);
+  const pendingBookings = allBookings.filter(
+    (b) => b.status === "pending",
+  ).length;
+  const upcomingBookings = allBookings.filter(
+    (b) => b.status === "upcoming",
+  ).length;
+  const recentBookings = (allBookings || []).slice(0, 5);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Admin Panel</Text>
-            <Text style={styles.title}>Dashboard</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header Section with Gradient */}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerBadge}>Admin Panel</Text>
+              <Text style={styles.headerTitle}>Dashboard</Text>
+              <Text style={styles.headerSubtitle}>
+                Welcome back! Here's your overview
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#FFF" />
+              {pendingBookings > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {pendingBookings}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
-            {pendingBookings > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{pendingBookings}</Text>
+        </LinearGradient>
+
+        {/* Stats Grid */}
+        <View style={styles.statsWrapper}>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statIconBg,
+                  { backgroundColor: colors.success + "15" },
+                ]}
+              >
+                <Ionicons
+                  name="cash-outline"
+                  size={28}
+                  color={colors.success}
+                />
               </View>
-            )}
-          </TouchableOpacity>
+              <Text style={styles.statValue}>
+                ₹{dashboardStats?.totalRevenue?.toFixed(0) || 0}
+              </Text>
+              <Text style={styles.statLabel}>Total Revenue</Text>
+              <Text style={styles.statTrend}>↑ +12% from last month</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statIconBg,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={28}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.statValue}>
+                {dashboardStats?.totalBookings || 0}
+              </Text>
+              <Text style={styles.statLabel}>Total Bookings</Text>
+              <Text style={styles.statTrend}>
+                {dashboardStats?.todayBookings || 0} today
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statIconBg,
+                  { backgroundColor: colors.warning + "15" },
+                ]}
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={28}
+                  color={colors.warning}
+                />
+              </View>
+              <Text style={styles.statValue}>
+                {dashboardStats?.activeUsers || 0}
+              </Text>
+              <Text style={styles.statLabel}>Active Users</Text>
+              <Text style={styles.statTrend}>Registered users</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statIconBg,
+                  { backgroundColor: colors.info + "15" },
+                ]}
+              >
+                <Ionicons name="car-outline" size={28} color={colors.info} />
+              </View>
+              <Text style={styles.statValue}>
+                {dashboardStats?.totalParkingSpots || 0}
+              </Text>
+              <Text style={styles.statLabel}>Parking Spots</Text>
+              <Text style={styles.statTrend}>
+                {dashboardStats?.occupancyRate || 0}% occupied
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Overview Stats */}
-        <View style={styles.statsGrid}>
-          <StatCard
-            icon="cash"
-            iconColor={colors.success}
-            title="Total Revenue"
-            value={`$${dashboardStats.totalRevenue.toFixed(0)}`}
-            subtitle="All time"
-          />
-          <StatCard
-            icon="calendar"
-            iconColor={colors.primary}
-            title="Total Bookings"
-            value={dashboardStats.totalBookings}
-            subtitle="All time"
-          />
-          <StatCard
-            icon="people"
-            iconColor={colors.warning}
-            title="Active Users"
-            value={dashboardStats.activeUsers}
-            subtitle="Registered"
-          />
-          <StatCard
-            icon="car-sport"
-            iconColor={colors.info}
-            title="Parking Spots"
-            value={dashboardStats.totalParkingSpots}
-            subtitle="Managed"
-          />
-        </View>
-
-        {/* Today's Stats */}
+        {/* Today's Overview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Today's Overview</Text>
-          <View style={styles.todayStats}>
-            <View style={styles.todayStatItem}>
-              <Ionicons name="trending-up" size={20} color={colors.success} />
-              <View style={styles.todayStatInfo}>
-                <Text style={styles.todayStatValue}>${dashboardStats.todayRevenue}</Text>
-                <Text style={styles.todayStatLabel}>Revenue</Text>
-              </View>
+          <View style={styles.overviewContainer}>
+            <View style={styles.overviewItem}>
+              <Ionicons name="trending-up" size={24} color={colors.success} />
+              <Text style={styles.overviewValue}>
+                ₹{dashboardStats?.todayRevenue || 0}
+              </Text>
+              <Text style={styles.overviewLabel}>Revenue</Text>
             </View>
-            <View style={styles.todayStatDivider} />
-            <View style={styles.todayStatItem}>
-              <Ionicons name="bookmark" size={20} color={colors.primary} />
-              <View style={styles.todayStatInfo}>
-                <Text style={styles.todayStatValue}>{dashboardStats.todayBookings}</Text>
-                <Text style={styles.todayStatLabel}>Bookings</Text>
-              </View>
+            <View style={styles.overviewDivider} />
+            <View style={styles.overviewItem}>
+              <Ionicons name="bookmark" size={24} color={colors.primary} />
+              <Text style={styles.overviewValue}>
+                {dashboardStats?.todayBookings || 0}
+              </Text>
+              <Text style={styles.overviewLabel}>Bookings</Text>
             </View>
-            <View style={styles.todayStatDivider} />
-            <View style={styles.todayStatItem}>
-              <Ionicons name="pie-chart" size={20} color={colors.warning} />
-              <View style={styles.todayStatInfo}>
-                <Text style={styles.todayStatValue}>{dashboardStats.occupancyRate}%</Text>
-                <Text style={styles.todayStatLabel}>Occupancy</Text>
-              </View>
+            <View style={styles.overviewDivider} />
+            <View style={styles.overviewItem}>
+              <Ionicons name="pie-chart" size={24} color={colors.warning} />
+              <Text style={styles.overviewValue}>
+                {dashboardStats?.occupancyRate || 0}%
+              </Text>
+              <Text style={styles.overviewLabel}>Occupancy</Text>
             </View>
           </View>
         </View>
@@ -145,33 +240,93 @@ export default function AdminDashboard() {
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <QuickAction icon="add-circle" title="Add Parking" color={colors.primary} />
-            <QuickAction icon="eye" title="View Bookings" color={colors.success} />
-            <QuickAction icon="analytics" title="Reports" color={colors.warning} />
-            <QuickAction icon="settings" title="Settings" color={colors.info} />
+          <View style={styles.quickActions}>
+            <TouchableOpacity style={styles.quickAction}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                style={styles.quickActionIcon}
+              >
+                <Ionicons name="add-outline" size={28} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.quickActionText}>Add Parking</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickAction}>
+              <LinearGradient
+                colors={[colors.success, "#2EB872"]}
+                style={styles.quickActionIcon}
+              >
+                <Ionicons name="eye-outline" size={28} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.quickActionText}>View Bookings</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickAction}>
+              <LinearGradient
+                colors={[colors.warning, "#FF9F0A"]}
+                style={styles.quickActionIcon}
+              >
+                <Ionicons name="analytics-outline" size={28} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.quickActionText}>Reports</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickAction}>
+              <LinearGradient
+                colors={[colors.info, "#5E5CE6"]}
+                style={styles.quickActionIcon}
+              >
+                <Ionicons name="settings-outline" size={28} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.quickActionText}>Settings</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Alerts */}
+        {/* Alerts Section */}
         {(pendingBookings > 0 || upcomingBookings > 0) && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Alerts</Text>
+            <Text style={styles.sectionTitle}>Alerts & Notifications</Text>
             {pendingBookings > 0 && (
-              <View style={[styles.alertCard, styles.alertWarning]}>
-                <Ionicons name="time" size={20} color={colors.warning} />
-                <Text style={styles.alertText}>
-                  {pendingBookings} booking(s) pending approval
-                </Text>
-              </View>
+              <TouchableOpacity style={[styles.alertCard, styles.alertWarning]}>
+                <Ionicons
+                  name="time-outline"
+                  size={22}
+                  color={colors.warning}
+                />
+                <View style={styles.alertContent}>
+                  <Text style={styles.alertTitle}>Pending Approvals</Text>
+                  <Text style={styles.alertMessage}>
+                    {pendingBookings} booking(s) waiting for your approval
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.warning}
+                />
+              </TouchableOpacity>
             )}
+
             {upcomingBookings > 0 && (
-              <View style={[styles.alertCard, styles.alertInfo]}>
-                <Ionicons name="calendar" size={20} color={colors.primary} />
-                <Text style={styles.alertText}>
-                  {upcomingBookings} upcoming booking(s) this week
-                </Text>
-              </View>
+              <TouchableOpacity style={[styles.alertCard, styles.alertInfo]}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={22}
+                  color={colors.primary}
+                />
+                <View style={styles.alertContent}>
+                  <Text style={styles.alertTitle}>Upcoming Bookings</Text>
+                  <Text style={styles.alertMessage}>
+                    {upcomingBookings} booking(s) scheduled for today
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -181,17 +336,57 @@ export default function AdminDashboard() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Bookings</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>See All →</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.recentBookingsCard}>
+
+          <View style={styles.recentBookingsContainer}>
             {recentBookings.map((booking, index) => (
-              <RecentBookingItem key={booking.id} booking={booking} />
+              <View
+                key={booking.id}
+                style={[
+                  styles.bookingItem,
+                  index === recentBookings.length - 1 && styles.lastBookingItem,
+                ]}
+              >
+                <View style={styles.bookingAvatar}>
+                  <Text style={styles.bookingAvatarText}>
+                    {booking.userName.charAt(0)}
+                  </Text>
+                </View>
+                <View style={styles.bookingInfo}>
+                  <Text style={styles.bookingUserName}>{booking.userName}</Text>
+                  <Text style={styles.bookingParkingName}>
+                    {booking.parkingName}
+                  </Text>
+                </View>
+                <View style={styles.bookingRight}>
+                  <Text style={styles.bookingPrice}>
+                    ₹{booking.totalPrice.toFixed(0)}
+                  </Text>
+                  <View
+                    style={[
+                      styles.bookingStatus,
+                      booking.status === "completed" && styles.statusCompleted,
+                      booking.status === "pending" && styles.statusPending,
+                      booking.status === "upcoming" && styles.statusUpcoming,
+                    ]}
+                  >
+                    <Text style={styles.bookingStatusText}>
+                      {booking.status === "completed"
+                        ? "Done"
+                        : booking.status === "pending"
+                          ? "Pending"
+                          : "Upcoming"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
             ))}
           </View>
         </View>
 
-        <View style={{ height: spacing.xl }} />
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -202,217 +397,281 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  headerGradient: {
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.lg,
   },
-  greeting: {
+  headerBadge: {
     fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '600',
+    color: colors.textWhite + "CC",
+    fontWeight: "600",
+    marginBottom: spacing.xs,
   },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  headerTitle: {
+    fontSize: fontSize.xxxl,
+    fontWeight: "700",
+    color: colors.textWhite,
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textWhite + "CC",
   },
   notificationButton: {
     width: 48,
     height: 48,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
+    backgroundColor: colors.textWhite + "20",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  badge: {
-    position: 'absolute',
+  notificationBadge: {
+    position: "absolute",
     top: 8,
     right: 8,
     backgroundColor: colors.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
-  badgeText: {
+  notificationBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textWhite,
   },
+  statsWrapper: {
+    marginTop: -spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.sm,
-    marginTop: spacing.md,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
   },
   statCard: {
-    width: '48%',
-    margin: '1%',
+    flex: 1,
+    minWidth: (width - 3 * spacing.lg) / 2 - spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
+    ...shadows.md,
   },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+  statIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
   },
   statValue: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 2,
   },
-  statTitle: {
+  statLabel: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginBottom: 4,
   },
-  statSubtitle: {
+  statTrend: {
     fontSize: fontSize.xs,
-    color: colors.textLight,
-    marginTop: 2,
+    color: colors.success,
   },
   section: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
-    marginBottom: spacing.md,
   },
   seeAllText: {
     fontSize: fontSize.sm,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  todayStats: {
-    flexDirection: 'row',
+  overviewContainer: {
+    flexDirection: "row",
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.md,
   },
-  todayStatItem: {
+  overviewItem: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: "center",
   },
-  todayStatInfo: {
-    marginLeft: spacing.sm,
-  },
-  todayStatValue: {
-    fontSize: fontSize.md,
-    fontWeight: '700',
+  overviewValue: {
+    fontSize: fontSize.lg,
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginTop: spacing.sm,
   },
-  todayStatLabel: {
+  overviewLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+    marginTop: 2,
   },
-  todayStatDivider: {
+  overviewDivider: {
     width: 1,
     backgroundColor: colors.borderLight,
-    marginHorizontal: spacing.sm,
   },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: -spacing.sm,
+  quickActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
   },
   quickAction: {
-    width: '25%',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
+    flex: 1,
+    minWidth: (width - 3 * spacing.lg) / 4 - spacing.md,
+    alignItems: "center",
   },
   quickActionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.md,
   },
   quickActionText: {
     fontSize: fontSize.xs,
     color: colors.textPrimary,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
+    fontWeight: "500",
   },
   alertCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   alertWarning: {
-    backgroundColor: colors.warning + '15',
+    backgroundColor: colors.warning + "10",
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
   },
   alertInfo: {
-    backgroundColor: colors.primary + '15',
+    backgroundColor: colors.primary + "10",
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
-  alertText: {
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    marginLeft: spacing.sm,
+  alertContent: {
     flex: 1,
   },
-  recentBookingsCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.sm,
-    ...shadows.sm,
+  alertTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.textPrimary,
+    marginBottom: 2,
   },
-  recentBookingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.sm,
+  alertMessage: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  recentBookingsContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    overflow: "hidden",
+    ...shadows.md,
+  },
+  bookingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
-  recentBookingLeft: {
+  lastBookingItem: {
+    borderBottomWidth: 0,
+  },
+  bookingAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
+  },
+  bookingAvatarText: {
+    fontSize: fontSize.lg,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  bookingInfo: {
     flex: 1,
   },
-  recentBookingName: {
+  bookingUserName: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
+    marginBottom: 2,
   },
-  recentBookingParking: {
+  bookingParkingName: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    marginTop: 2,
   },
-  recentBookingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  bookingRight: {
+    alignItems: "flex-end",
   },
-  recentBookingPrice: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
+  bookingPrice: {
+    fontSize: fontSize.md,
+    fontWeight: "700",
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  bookingStatus: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  statusCompleted: {
+    backgroundColor: colors.success + "15",
+  },
+  statusPending: {
+    backgroundColor: colors.warning + "15",
+  },
+  statusUpcoming: {
+    backgroundColor: colors.primary + "15",
+  },
+  bookingStatusText: {
+    fontSize: fontSize.xs,
+    fontWeight: "600",
     color: colors.textPrimary,
-    marginRight: spacing.sm,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
 });

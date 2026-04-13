@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,38 +12,81 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { parkingSpots as initialParkingSpots } from '../../src/data/parkingData';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
+import {
+  getParkings,
+  createParking,
+  updateParking,
+  deleteParking,
+  markFull,
+} from "../../src/api/parkingApi.js";
+
+const { width } = Dimensions.get("window");
 
 export default function AdminParkings() {
-  const [parkings, setParkings] = useState(initialParkingSpots);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [parkings, setParkings] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [editingParking, setEditingParking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    pricePerHour: '',
-    totalSlots: '',
-    availableSlots: '',
+    name: "",
+    address: "",
+    pricePerHour: "",
+    totalSlots: "",
+    availableSlots: "",
   });
 
-  const filteredParkings = parkings.filter(
+  useEffect(() => {
+    fetchParkings();
+  }, []);
+
+  const fetchParkings = async () => {
+    try {
+      const res = await getParkings();
+      setParkings(res.data.parkings);
+    } catch (error) {
+      console.log("Fetch Error:", error);
+      Alert.alert("Error", "Failed to load parkings");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchParkings();
+  };
+
+  const filteredParkings = (parkings || []).filter(
     (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.address.toLowerCase().includes(searchQuery.toLowerCase())
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.address?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const openAddModal = () => {
     setEditingParking(null);
     setFormData({
-      name: '',
-      address: '',
-      pricePerHour: '',
-      totalSlots: '',
-      availableSlots: '',
+      name: "",
+      address: "",
+      pricePerHour: "",
+      totalSlots: "",
+      availableSlots: "",
     });
     setModalVisible(true);
   };
@@ -53,191 +96,355 @@ export default function AdminParkings() {
     setFormData({
       name: parking.name,
       address: parking.address,
-      pricePerHour: parking.pricePerHour.toString(),
-      totalSlots: parking.totalSlots.toString(),
-      availableSlots: parking.availableSlots.toString(),
+      pricePerHour: String(parking.pricePerHour),
+      totalSlots: String(parking.totalSlots),
+      availableSlots: String(parking.availableSlots),
     });
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.address || !formData.pricePerHour) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
-    if (editingParking) {
-      // Update existing
-      setParkings(
-        parkings.map((p) =>
-          p.id === editingParking.id
-            ? {
-                ...p,
-                name: formData.name,
-                address: formData.address,
-                pricePerHour: parseFloat(formData.pricePerHour),
-                totalSlots: parseInt(formData.totalSlots) || 0,
-                availableSlots: parseInt(formData.availableSlots) || 0,
-                isAvailable: parseInt(formData.availableSlots) > 0,
-              }
-            : p
-        )
-      );
-      Alert.alert('Success', 'Parking updated successfully');
-    } else {
-      // Add new
-      const newParking = {
-        id: Date.now().toString(),
-        name: formData.name,
-        address: formData.address,
-        distance: '0.0 km',
-        pricePerHour: parseFloat(formData.pricePerHour),
-        totalSlots: parseInt(formData.totalSlots) || 50,
-        availableSlots: parseInt(formData.availableSlots) || 50,
-        isAvailable: true,
-        rating: 4.0,
-        features: ['New'],
-        openTime: '06:00',
-        closeTime: '22:00',
-        coordinates: { lat: 0, lng: 0 },
-      };
-      setParkings([newParking, ...parkings]);
-      Alert.alert('Success', 'Parking added successfully');
+    try {
+      if (editingParking) {
+        await updateParking(editingParking._id, {
+          name: formData.name,
+          address: formData.address,
+          pricePerHour: Number(formData.pricePerHour),
+          totalSlots: Number(formData.totalSlots),
+          availableSlots: Number(formData.availableSlots),
+        });
+        Alert.alert("Success", "Parking updated successfully");
+      } else {
+        await createParking({
+          name: formData.name,
+          address: formData.address,
+          pricePerHour: Number(formData.pricePerHour),
+          totalSlots: Number(formData.totalSlots),
+        });
+        Alert.alert("Success", "Parking created successfully");
+      }
+      fetchParkings();
+      setModalVisible(false);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Operation failed");
     }
-    setModalVisible(false);
   };
 
   const handleDelete = (parking) => {
     Alert.alert(
-      'Delete Parking',
+      "Delete Parking",
       `Are you sure you want to delete "${parking.name}"?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setParkings(parkings.filter((p) => p.id !== parking.id));
-            Alert.alert('Deleted', 'Parking removed successfully');
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteParking(parking._id);
+              fetchParkings();
+              Alert.alert("Success", "Parking deleted");
+            } catch {
+              Alert.alert("Error", "Delete failed");
+            }
           },
         },
-      ]
+      ],
     );
   };
 
-  const toggleAvailability = (parking) => {
-    setParkings(
-      parkings.map((p) =>
-        p.id === parking.id
-          ? {
-              ...p,
-              isAvailable: !p.isAvailable,
-              availableSlots: p.isAvailable ? 0 : p.totalSlots,
-            }
-          : p
-      )
-    );
+  const toggleAvailability = async (parking) => {
+    try {
+      await markFull(parking._id);
+      fetchParkings();
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to update status");
+    }
   };
 
-  const renderParkingItem = ({ item }) => (
-    <View style={styles.parkingCard}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.statusIndicator, item.isAvailable ? styles.statusAvailable : styles.statusFull]} />
-        <View style={styles.cardInfo}>
-          <Text style={styles.parkingName}>{item.name}</Text>
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.address} numberOfLines={1}>{item.address}</Text>
+  const getOccupancyRate = (available, total) => {
+    if (!total) return 0;
+    return ((total - available) / total) * 100;
+  };
+
+  const renderParkingItem = ({ item }) => {
+    const isAvailable = item.availableSlots > 0;
+    const occupancyRate = getOccupancyRate(
+      item.availableSlots,
+      item.totalSlots,
+    );
+
+    return (
+      <TouchableOpacity
+        style={styles.parkingCard}
+        onPress={() => openEditModal(item)}
+        activeOpacity={0.9}
+      >
+        {/* Card Header with Gradient */}
+        <LinearGradient
+          colors={
+            isAvailable
+              ? [colors.success, "#2EB872"]
+              : [colors.danger, "#FF453A"]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.cardGradient}
+        >
+          <View style={styles.statusSection}>
+            <Ionicons
+              name={isAvailable ? "checkmark-circle" : "close-circle"}
+              size={16}
+              color="#FFF"
+            />
+            <Text style={styles.statusText}>
+              {isAvailable ? "Available" : "Full"}
+            </Text>
+          </View>
+          <Text style={styles.parkingId}>ID: {item._id?.slice(-6)}</Text>
+        </LinearGradient>
+
+        {/* Card Content */}
+        <View style={styles.cardContent}>
+          <View style={styles.parkingHeader}>
+            <View style={styles.parkingIcon}>
+              <Ionicons name="car-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.parkingInfo}>
+              <Text style={styles.parkingName}>{item.name}</Text>
+              <View style={styles.addressRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.address} numberOfLines={1}>
+                  {item.address}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceCurrency}>₹</Text>
+              <Text style={styles.priceValue}>
+                {Number(item.pricePerHour || 0).toFixed(0)}
+              </Text>
+              <Text style={styles.perHour}>/hr</Text>
+            </View>
+          </View>
+
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Ionicons
+                name="layers-outline"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.statNumber}>{item.totalSlots || 0}</Text>
+              <Text style={styles.statLabel}>Total Slots</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color={colors.success}
+              />
+              <Text style={[styles.statNumber, { color: colors.success }]}>
+                {item.availableSlots || 0}
+              </Text>
+              <Text style={styles.statLabel}>Available</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Ionicons name="trending-up" size={20} color={colors.warning} />
+              <Text style={styles.statNumber}>
+                {Math.round(occupancyRate)}%
+              </Text>
+              <Text style={styles.statLabel}>Occupancy</Text>
+            </View>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${occupancyRate}%` },
+                  isAvailable ? styles.progressAvailable : styles.progressFull,
+                ]}
+              />
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.editBtn]}
+              onPress={() => openEditModal(item)}
+            >
+              <Ionicons
+                name="create-outline"
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={[styles.actionBtnText, styles.editBtnText]}>
+                Edit
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                isAvailable ? styles.fullBtn : styles.openBtn,
+              ]}
+              onPress={() => toggleAvailability(item)}
+            >
+              <Ionicons
+                name={isAvailable ? "close-outline" : "checkmark-outline"}
+                size={18}
+                color={isAvailable ? colors.warning : colors.success}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  isAvailable ? styles.fullBtnText : styles.openBtnText,
+                ]}
+              >
+                {isAvailable ? "Mark Full" : "Open"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.deleteBtn]}
+              onPress={() => handleDelete(item)}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              <Text style={[styles.actionBtnText, styles.deleteBtnText]}>
+                Delete
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.priceTag}>
-          <Text style={styles.price}>${item.pricePerHour.toFixed(2)}</Text>
-          <Text style={styles.perHour}>/hr</Text>
-        </View>
-      </View>
+      </TouchableOpacity>
+    );
+  };
 
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{item.totalSlots}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.success }]}>{item.availableSlots}</Text>
-          <Text style={styles.statLabel}>Available</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="star" size={14} color={colors.warning} />
-          <Text style={styles.statValue}>{item.rating}</Text>
-        </View>
-      </View>
-
-      <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
-          onPress={() => openEditModal(item)}
-        >
-          <Ionicons name="pencil" size={16} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.primary }]}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, item.isAvailable ? styles.closeButton : styles.openButton]}
-          onPress={() => toggleAvailability(item)}
-        >
-          <Ionicons name={item.isAvailable ? 'close-circle' : 'checkmark-circle'} size={16} color={item.isAvailable ? colors.warning : colors.success} />
-          <Text style={[styles.actionText, { color: item.isAvailable ? colors.warning : colors.success }]}>
-            {item.isAvailable ? 'Mark Full' : 'Open'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDelete(item)}
-        >
-          <Ionicons name="trash" size={16} color={colors.danger} />
-          <Text style={[styles.actionText, { color: colors.danger }]}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+  const totalParkings = parkings.length;
+  const availableParkings = parkings.filter((p) => p.availableSlots > 0).length;
+  const totalSlots = parkings.reduce((sum, p) => sum + (p.totalSlots || 0), 0);
+  const occupiedSlots = parkings.reduce(
+    (sum, p) => sum + ((p.totalSlots || 0) - (p.availableSlots || 0)),
+    0,
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading parkings...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.subtitle}>Admin Panel</Text>
-          <Text style={styles.title}>Manage Parkings</Text>
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerBadge}>Admin Panel</Text>
+            <Text style={styles.headerTitle}>Manage Parkings</Text>
+            <Text style={styles.headerSubtitle}>
+              {totalParkings} parking locations
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+            <Ionicons name="add" size={28} color="#FFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Ionicons name="add" size={24} color={colors.textWhite} />
-        </TouchableOpacity>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or location..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      {/* Stats Overview */}
+      <View style={styles.statsOverview}>
+        <View style={styles.statOverviewCard}>
+          <Ionicons name="business-outline" size={22} color={colors.primary} />
+          <Text style={styles.statOverviewValue}>{totalParkings}</Text>
+          <Text style={styles.statOverviewLabel}>Total Parkings</Text>
+        </View>
+        <View style={styles.statOverviewCard}>
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={22}
+            color={colors.success}
+          />
+          <Text style={styles.statOverviewValue}>{availableParkings}</Text>
+          <Text style={styles.statOverviewLabel}>Available</Text>
+        </View>
+        <View style={styles.statOverviewCard}>
+          <Ionicons name="car-outline" size={22} color={colors.warning} />
+          <Text style={styles.statOverviewValue}>
+            {occupiedSlots}/{totalSlots}
+          </Text>
+          <Text style={styles.statOverviewLabel}>Slots Filled</Text>
+        </View>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search parkings..."
-          placeholderTextColor={colors.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {/* Stats Bar */}
-      <View style={styles.statsBar}>
-        <Text style={styles.statsText}>
-          {parkings.length} total • {parkings.filter(p => p.isAvailable).length} available
-        </Text>
-      </View>
-
-      {/* List */}
+      {/* Parking List */}
       <FlatList
         data={filteredParkings}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         renderItem={renderParkingItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="car-outline" size={64} color={colors.textLight} />
+            <Text style={styles.emptyTitle}>No parkings found</Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? "Try adjusting your search"
+                : "Tap + to add your first parking"}
+            </Text>
+          </View>
+        }
       />
 
       {/* Add/Edit Modal */}
@@ -248,83 +455,144 @@ export default function AdminParkings() {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalContainer}
         >
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              style={styles.modalHeader}
+            >
               <Text style={styles.modalTitle}>
-                {editingParking ? 'Edit Parking' : 'Add New Parking'}
+                {editingParking ? "Edit Parking" : "Add New Parking"}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.textPrimary} />
+                <Ionicons name="close" size={24} color="#FFF" />
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Parking Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter parking name"
-                  placeholderTextColor={colors.textLight}
-                  value={formData.name}
-                  onChangeText={(text) => setFormData({ ...formData, name: text })}
-                />
+                <Text style={styles.formLabel}>Parking Name *</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="business-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter parking name"
+                    placeholderTextColor={colors.textLight}
+                    value={formData.name}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, name: text })
+                    }
+                  />
+                </View>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Address *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter full address"
-                  placeholderTextColor={colors.textLight}
-                  value={formData.address}
-                  onChangeText={(text) => setFormData({ ...formData, address: text })}
-                />
+                <Text style={styles.formLabel}>Address *</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="location-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter full address"
+                    placeholderTextColor={colors.textLight}
+                    value={formData.address}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, address: text })
+                    }
+                  />
+                </View>
               </View>
 
               <View style={styles.formRow}>
-                <View style={[styles.formGroup, { flex: 1, marginRight: spacing.sm }]}>
-                  <Text style={styles.label}>Price/Hour *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="0.00"
-                    placeholderTextColor={colors.textLight}
-                    keyboardType="decimal-pad"
-                    value={formData.pricePerHour}
-                    onChangeText={(text) => setFormData({ ...formData, pricePerHour: text })}
-                  />
+                <View
+                  style={[
+                    styles.formGroup,
+                    { flex: 1, marginRight: spacing.sm },
+                  ]}
+                >
+                  <Text style={styles.formLabel}>Price/Hour *</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons
+                      name="cash-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="0"
+                      placeholderTextColor={colors.textLight}
+                      keyboardType="decimal-pad"
+                      value={formData.pricePerHour}
+                      onChangeText={(text) =>
+                        setFormData({ ...formData, pricePerHour: text })
+                      }
+                    />
+                  </View>
                 </View>
                 <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Total Slots</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="50"
-                    placeholderTextColor={colors.textLight}
-                    keyboardType="number-pad"
-                    value={formData.totalSlots}
-                    onChangeText={(text) => setFormData({ ...formData, totalSlots: text })}
-                  />
+                  <Text style={styles.formLabel}>Total Slots</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons
+                      name="layers-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="50"
+                      placeholderTextColor={colors.textLight}
+                      keyboardType="number-pad"
+                      value={formData.totalSlots}
+                      onChangeText={(text) =>
+                        setFormData({ ...formData, totalSlots: text })
+                      }
+                    />
+                  </View>
                 </View>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Available Slots</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter available slots"
-                  placeholderTextColor={colors.textLight}
-                  keyboardType="number-pad"
-                  value={formData.availableSlots}
-                  onChangeText={(text) => setFormData({ ...formData, availableSlots: text })}
-                />
+                <Text style={styles.formLabel}>Available Slots</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter available slots"
+                    placeholderTextColor={colors.textLight}
+                    keyboardType="number-pad"
+                    value={formData.availableSlots}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, availableSlots: text })
+                    }
+                  />
+                </View>
               </View>
 
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>
-                  {editingParking ? 'Update Parking' : 'Add Parking'}
-                </Text>
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  style={styles.saveButtonGradient}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {editingParking ? "Update Parking" : "Create Parking"}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -339,42 +607,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  headerGradient: {
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  subtitle: {
+  headerBadge: {
     fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '600',
+    color: colors.textWhite + "CC",
+    fontWeight: "600",
+    marginBottom: spacing.xs,
   },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  headerTitle: {
+    fontSize: fontSize.xxxl,
+    fontWeight: "700",
+    color: colors.textWhite,
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textWhite + "CC",
   },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.textWhite + "20",
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
     paddingHorizontal: spacing.md,
     height: 48,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.md,
   },
   searchInput: {
     flex: 1,
@@ -382,184 +671,286 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textPrimary,
   },
-  statsBar: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  statsOverview: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.lg,
+    marginTop: -spacing.lg,
+    gap: spacing.sm,
   },
-  statsText: {
-    fontSize: fontSize.sm,
+  statOverviewCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    alignItems: "center",
+    ...shadows.md,
+  },
+  statOverviewValue: {
+    fontSize: fontSize.md,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+  },
+  statOverviewLabel: {
+    fontSize: fontSize.xs,
     color: colors.textSecondary,
+    marginTop: 2,
   },
   listContent: {
-    paddingBottom: spacing.xl,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
   },
   parkingCard: {
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
-    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+    ...shadows.lg,
+  },
+  cardGradient: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  statusSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  statusText: {
+    fontSize: fontSize.xs,
+    fontWeight: "700",
+    color: colors.textWhite,
+    letterSpacing: 0.5,
+  },
+  parkingId: {
+    fontSize: fontSize.xs,
+    fontWeight: "500",
+    color: colors.textWhite + "CC",
+  },
+  cardContent: {
     padding: spacing.md,
-    ...shadows.sm,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  parkingHeader: {
+    flexDirection: "row",
+    marginBottom: spacing.md,
   },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
-    marginRight: spacing.sm,
+  parkingIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
   },
-  statusAvailable: {
-    backgroundColor: colors.success,
-  },
-  statusFull: {
-    backgroundColor: colors.danger,
-  },
-  cardInfo: {
+  parkingInfo: {
     flex: 1,
   },
   parkingName: {
     fontSize: fontSize.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 4,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   address: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    marginLeft: spacing.xs,
+    marginLeft: 4,
     flex: 1,
   },
-  priceTag: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
   },
-  price: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
+  priceCurrency: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  priceValue: {
+    fontSize: fontSize.xl,
+    fontWeight: "700",
     color: colors.primary,
   },
   perHour: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+    marginLeft: 2,
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+  statsGrid: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.lg,
+  statBox: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+    borderRadius: borderRadius.lg,
   },
-  statValue: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
+  statNumber: {
+    fontSize: fontSize.md,
+    fontWeight: "700",
     color: colors.textPrimary,
-    marginLeft: spacing.xs,
+    marginTop: 4,
   },
   statLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    marginLeft: spacing.xs,
+    marginTop: 2,
+  },
+  progressSection: {
+    marginBottom: spacing.md,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: colors.borderLight,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  progressAvailable: {
+    backgroundColor: colors.success,
+  },
+  progressFull: {
+    backgroundColor: colors.danger,
   },
   actionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  editBtn: {
+    backgroundColor: colors.primary + "10",
+  },
+  fullBtn: {
+    backgroundColor: colors.warning + "10",
+  },
+  openBtn: {
+    backgroundColor: colors.success + "10",
+  },
+  deleteBtn: {
+    backgroundColor: colors.danger + "10",
+  },
+  actionBtnText: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+  },
+  editBtnText: {
+    color: colors.primary,
+  },
+  fullBtnText: {
+    color: colors.warning,
+  },
+  openBtnText: {
+    color: colors.success,
+  },
+  deleteBtnText: {
+    color: colors.danger,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xxxl,
+  },
+  emptyTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: "600",
+    color: colors.textPrimary,
     marginTop: spacing.md,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginRight: spacing.xs,
-  },
-  editButton: {
-    backgroundColor: colors.primary + '10',
-  },
-  closeButton: {
-    backgroundColor: colors.warning + '10',
-  },
-  openButton: {
-    backgroundColor: colors.success + '10',
-  },
-  deleteButton: {
-    backgroundColor: colors.danger + '10',
-    marginRight: 0,
-  },
-  actionText: {
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    marginLeft: spacing.xs,
+  emptySubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textAlign: "center",
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
-    maxHeight: '80%',
+    maxHeight: "90%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: spacing.lg,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
   },
   modalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: fontSize.lg,
+    fontWeight: "700",
+    color: colors.textWhite,
+  },
+  modalBody: {
+    padding: spacing.lg,
   },
   formGroup: {
     marginBottom: spacing.md,
   },
   formRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
-  label: {
+  formLabel: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  formInput: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    marginLeft: spacing.sm,
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+  },
   saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  saveButtonGradient: {
     paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    alignItems: "center",
   },
   saveButtonText: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textWhite,
   },
 });

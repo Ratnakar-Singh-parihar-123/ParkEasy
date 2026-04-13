@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,26 +9,72 @@ import {
   TextInput,
   Alert,
   Modal,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { allUsers as initialUsers, allBookings } from '../../src/data/parkingData';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
+
+import {
+  getUsers,
+  deactivateUserApi,
+  activateUserApi,
+} from "../../src/api/userApi";
+
+const { width } = Dimensions.get("window");
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState(initialUsers);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const getUserBookings = (userId) => {
-    return allBookings.filter((b) => b.userId === userId);
+  const fetchUsers = async () => {
+    try {
+      const res = await getUsers();
+      const formatted = res.data.users.map((u) => ({
+        ...u,
+        id: u._id,
+        status: u.isActive ? "active" : "inactive",
+        memberSince: new Date(u.createdAt).toLocaleDateString(),
+        totalBookings: u.bookings?.length || 0,
+        totalSpent: u.totalSpent || 0,
+      }));
+      setUsers(formatted);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to load users");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchUsers();
+  };
+
+  const filteredUsers = (users || []).filter(
+    (u) =>
+      u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const handleViewUser = (user) => {
     setSelectedUser(user);
@@ -36,142 +82,304 @@ export default function AdminUsers() {
   };
 
   const handleToggleStatus = (user) => {
-    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+    const isActive = user.status === "active";
     Alert.alert(
-      'Update Status',
-      `Mark ${user.name} as ${newStatus}?`,
+      "Update Status",
+      `Are you sure you want to ${isActive ? "deactivate" : "activate"} ${user.name}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Confirm',
-          onPress: () => {
-            setUsers(
-              users.map((u) =>
-                u.id === user.id ? { ...u, status: newStatus } : u
-              )
-            );
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              if (isActive) {
+                await deactivateUserApi(user._id);
+              } else {
+                await activateUserApi(user._id);
+              }
+              fetchUsers();
+              setModalVisible(false);
+              Alert.alert(
+                "Success",
+                `User ${isActive ? "deactivated" : "activated"} successfully`,
+              );
+            } catch {
+              Alert.alert("Error", "Status update failed");
+            }
           },
         },
-      ]
+      ],
     );
   };
 
+  const getInitials = (name) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getRandomColor = (name) => {
+    const colors = [
+      "#4CD964",
+      "#5856D6",
+      "#FF9500",
+      "#FF3B30",
+      "#5E5CE6",
+      "#AF52DE",
+    ];
+    const index = name.length % colors.length;
+    return colors[index];
+  };
+
   const renderUserItem = ({ item }) => {
-    const userBookings = getUserBookings(item.id);
+    const isActive = item.status === "active";
+    const avatarColor = getRandomColor(item.name);
 
     return (
       <TouchableOpacity
         style={styles.userCard}
         onPress={() => handleViewUser(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.9}
       >
-        <View style={styles.cardHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {item.name.split(' ').map((n) => n[0]).join('')}
-            </Text>
-          </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userEmail}>{item.email}</Text>
-          </View>
-          <View style={[styles.statusBadge, item.status === 'active' ? styles.statusActive : styles.statusInactive]}>
-            <Text style={[styles.statusText, item.status === 'active' ? styles.statusTextActive : styles.statusTextInactive]}>
-              {item.status}
-            </Text>
-          </View>
-        </View>
+        <LinearGradient
+          colors={
+            isActive
+              ? [colors.success + "20", colors.success + "05"]
+              : [colors.danger + "20", colors.danger + "05"]
+          }
+          style={styles.cardGradient}
+        >
+          <View style={styles.cardContent}>
+            {/* Header */}
+            <View style={styles.cardHeader}>
+              <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+                <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{item.name}</Text>
+                <Text style={styles.userEmail}>{item.email}</Text>
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  isActive ? styles.statusActive : styles.statusInactive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    isActive ? styles.dotActive : styles.dotInactive,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    isActive
+                      ? styles.statusTextActive
+                      : styles.statusTextInactive,
+                  ]}
+                >
+                  {item.status}
+                </Text>
+              </View>
+            </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="calendar" size={16} color={colors.primary} />
-            <Text style={styles.statValue}>{item.totalBookings}</Text>
-            <Text style={styles.statLabel}>Bookings</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="cash" size={16} color={colors.success} />
-            <Text style={styles.statValue}>${item.totalSpent}</Text>
-            <Text style={styles.statLabel}>Spent</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="car" size={16} color={colors.warning} />
-            <Text style={styles.statValue}>{item.vehicleNumber || 'N/A'}</Text>
-            <Text style={styles.statLabel}>Vehicle</Text>
-          </View>
-        </View>
+            {/* Stats */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <View style={styles.statInfo}>
+                  <Text style={styles.statValue}>{item.totalBookings}</Text>
+                  <Text style={styles.statLabel}>Bookings</Text>
+                </View>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="cash-outline"
+                  size={18}
+                  color={colors.success}
+                />
+                <View style={styles.statInfo}>
+                  <Text style={styles.statValue}>
+                    ₹{Number(item.totalSpent || 0).toFixed(0)}
+                  </Text>
+                  <Text style={styles.statLabel}>Spent</Text>
+                </View>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons name="car-outline" size={18} color={colors.warning} />
+                <View style={styles.statInfo}>
+                  <Text style={styles.statValue}>
+                    {item.vehicleNumber || "N/A"}
+                  </Text>
+                  <Text style={styles.statLabel}>Vehicle</Text>
+                </View>
+              </View>
+            </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.memberSince}>Member since {item.memberSince}</Text>
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => handleViewUser(item)}
-            >
-              <Ionicons name="eye-outline" size={18} color={colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => handleToggleStatus(item)}
-            >
-              <Ionicons
-                name={item.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'}
-                size={18}
-                color={item.status === 'active' ? colors.warning : colors.success}
-              />
-            </TouchableOpacity>
+            {/* Footer */}
+            <View style={styles.cardFooter}>
+              <View style={styles.memberSince}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={colors.textLight}
+                />
+                <Text style={styles.memberSinceText}>
+                  Joined {item.memberSince}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.viewButton}
+                onPress={() => handleViewUser(item)}
+              >
+                <Text style={styles.viewButtonText}>View Details</Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={14}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
 
-  // Calculate totals
-  const activeUsers = users.filter((u) => u.status === 'active').length;
-  const totalSpent = users.reduce((sum, u) => sum + u.totalSpent, 0);
+  const activeUsers = users.filter((u) => u.status === "active").length;
+  const inactiveUsers = users.filter((u) => u.status === "inactive").length;
+  const totalSpent = users.reduce(
+    (sum, u) => sum + Number(u.totalSpent || 0),
+    0,
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading users...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.subtitle}>Admin Panel</Text>
-          <Text style={styles.title}>Manage Users</Text>
-        </View>
-      </View>
-
-      {/* Stats */}
-      <View style={styles.overviewStats}>
-        <View style={styles.overviewStatItem}>
-          <Text style={styles.overviewStatValue}>{users.length}</Text>
-          <Text style={styles.overviewStatLabel}>Total Users</Text>
-        </View>
-        <View style={styles.overviewStatDivider} />
-        <View style={styles.overviewStatItem}>
-          <Text style={[styles.overviewStatValue, { color: colors.success }]}>{activeUsers}</Text>
-          <Text style={styles.overviewStatLabel}>Active</Text>
-        </View>
-        <View style={styles.overviewStatDivider} />
-        <View style={styles.overviewStatItem}>
-          <Text style={[styles.overviewStatValue, { color: colors.primary }]}>${totalSpent}</Text>
-          <Text style={styles.overviewStatLabel}>Total Spent</Text>
-        </View>
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search users..."
-          placeholderTextColor={colors.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerBadge}>Admin Panel</Text>
+            <Text style={styles.headerTitle}>Manage Users</Text>
+            <Text style={styles.headerSubtitle}>
+              {users.length} total users registered
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+            <Ionicons name="refresh-outline" size={24} color="#FFF" />
           </TouchableOpacity>
-        )}
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or email..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      {/* Stats Overview */}
+      <View style={styles.statsOverview}>
+        <View style={styles.statOverviewCard}>
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.primary + "15" },
+            ]}
+          >
+            <Ionicons name="people-outline" size={24} color={colors.primary} />
+          </View>
+          <Text style={styles.statOverviewValue}>{users.length}</Text>
+          <Text style={styles.statOverviewLabel}>Total Users</Text>
+        </View>
+        <View style={styles.statOverviewCard}>
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.success + "15" },
+            ]}
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color={colors.success}
+            />
+          </View>
+          <Text style={[styles.statOverviewValue, { color: colors.success }]}>
+            {activeUsers}
+          </Text>
+          <Text style={styles.statOverviewLabel}>Active</Text>
+        </View>
+        <View style={styles.statOverviewCard}>
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.danger + "15" },
+            ]}
+          >
+            <Ionicons
+              name="close-circle-outline"
+              size={24}
+              color={colors.danger}
+            />
+          </View>
+          <Text style={[styles.statOverviewValue, { color: colors.danger }]}>
+            {inactiveUsers}
+          </Text>
+          <Text style={styles.statOverviewLabel}>Inactive</Text>
+        </View>
+        <View style={styles.statOverviewCard}>
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.warning + "15" },
+            ]}
+          >
+            <Ionicons name="cash-outline" size={24} color={colors.warning} />
+          </View>
+          <Text style={styles.statOverviewValue}>₹{totalSpent.toFixed(0)}</Text>
+          <Text style={styles.statOverviewLabel}>Total Spent</Text>
+        </View>
       </View>
 
       {/* Users List */}
@@ -181,10 +389,22 @@ export default function AdminUsers() {
         renderItem={renderUserItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color={colors.textLight} />
-            <Text style={styles.emptyText}>No users found</Text>
+            <Ionicons
+              name="people-outline"
+              size={80}
+              color={colors.textLight}
+            />
+            <Text style={styles.emptyTitle}>No users found</Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? "Try adjusting your search"
+                : "Users will appear here"}
+            </Text>
           </View>
         }
       />
@@ -196,69 +416,180 @@ export default function AdminUsers() {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {selectedUser && (
               <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>User Details</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Ionicons name="close" size={24} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.modalUserInfo}>
-                  <View style={styles.modalAvatar}>
-                    <Text style={styles.modalAvatarText}>
-                      {selectedUser.name.split(' ').map((n) => n[0]).join('')}
-                    </Text>
-                  </View>
-                  <Text style={styles.modalUserName}>{selectedUser.name}</Text>
-                  <Text style={styles.modalUserEmail}>{selectedUser.email}</Text>
-                  <View style={[styles.statusBadge, selectedUser.status === 'active' ? styles.statusActive : styles.statusInactive, { marginTop: spacing.sm }]}>
-                    <Text style={[styles.statusText, selectedUser.status === 'active' ? styles.statusTextActive : styles.statusTextInactive]}>
-                      {selectedUser.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.modalDetails}>
-                  <View style={styles.modalDetailItem}>
-                    <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
-                    <Text style={styles.modalDetailText}>{selectedUser.phone}</Text>
-                  </View>
-                  <View style={styles.modalDetailItem}>
-                    <Ionicons name="car-outline" size={18} color={colors.textSecondary} />
-                    <Text style={styles.modalDetailText}>{selectedUser.vehicleNumber || 'Not provided'}</Text>
-                  </View>
-                  <View style={styles.modalDetailItem}>
-                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-                    <Text style={styles.modalDetailText}>Member since {selectedUser.memberSince}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.modalStats}>
-                  <View style={styles.modalStatItem}>
-                    <Text style={styles.modalStatValue}>{selectedUser.totalBookings}</Text>
-                    <Text style={styles.modalStatLabel}>Total Bookings</Text>
-                  </View>
-                  <View style={styles.modalStatItem}>
-                    <Text style={styles.modalStatValue}>${selectedUser.totalSpent}</Text>
-                    <Text style={styles.modalStatLabel}>Total Spent</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.modalButton, selectedUser.status === 'active' ? styles.modalButtonWarning : styles.modalButtonSuccess]}
-                  onPress={() => {
-                    setModalVisible(false);
-                    handleToggleStatus(selectedUser);
-                  }}
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  style={styles.modalHeader}
                 >
-                  <Text style={styles.modalButtonText}>
-                    {selectedUser.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                  </Text>
-                </TouchableOpacity>
+                  <Text style={styles.modalTitle}>User Profile</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Ionicons name="close" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                </LinearGradient>
+
+                <ScrollView
+                  style={styles.modalBody}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Avatar Section */}
+                  <View style={styles.modalAvatarSection}>
+                    <View
+                      style={[
+                        styles.modalAvatar,
+                        { backgroundColor: getRandomColor(selectedUser.name) },
+                      ]}
+                    >
+                      <Text style={styles.modalAvatarText}>
+                        {getInitials(selectedUser.name)}
+                      </Text>
+                    </View>
+                    <Text style={styles.modalUserName}>
+                      {selectedUser.name}
+                    </Text>
+                    <Text style={styles.modalUserEmail}>
+                      {selectedUser.email}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        selectedUser.status === "active"
+                          ? styles.statusActive
+                          : styles.statusInactive,
+                        { marginTop: spacing.sm },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.statusDot,
+                          selectedUser.status === "active"
+                            ? styles.dotActive
+                            : styles.dotInactive,
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.statusText,
+                          selectedUser.status === "active"
+                            ? styles.statusTextActive
+                            : styles.statusTextInactive,
+                        ]}
+                      >
+                        {selectedUser.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Contact Info */}
+                  <View style={styles.infoSection}>
+                    <Text style={styles.infoSectionTitle}>
+                      Contact Information
+                    </Text>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoRow}>
+                        <Ionicons
+                          name="call-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.infoLabel}>Phone:</Text>
+                        <Text style={styles.infoValue}>
+                          {selectedUser.phone || "Not provided"}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Ionicons
+                          name="car-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.infoLabel}>Vehicle:</Text>
+                        <Text style={styles.infoValue}>
+                          {selectedUser.vehicleNumber || "Not provided"}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.infoLabel}>Joined:</Text>
+                        <Text style={styles.infoValue}>
+                          {selectedUser.memberSince}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Activity Stats */}
+                  <View style={styles.infoSection}>
+                    <Text style={styles.infoSectionTitle}>
+                      Activity Summary
+                    </Text>
+                    <View style={styles.statsContainer}>
+                      <View style={styles.statBox}>
+                        <Ionicons
+                          name="bookmark-outline"
+                          size={28}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.statBoxValue}>
+                          {selectedUser.totalBookings}
+                        </Text>
+                        <Text style={styles.statBoxLabel}>Total Bookings</Text>
+                      </View>
+                      <View style={styles.statBox}>
+                        <Ionicons
+                          name="cash-outline"
+                          size={28}
+                          color={colors.success}
+                        />
+                        <Text style={styles.statBoxValue}>
+                          ₹{Number(selectedUser.totalSpent || 0).toFixed(0)}
+                        </Text>
+                        <Text style={styles.statBoxLabel}>Total Spent</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Action Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      selectedUser.status === "active"
+                        ? styles.deactivateButton
+                        : styles.activateButton,
+                    ]}
+                    onPress={() => handleToggleStatus(selectedUser)}
+                  >
+                    <LinearGradient
+                      colors={
+                        selectedUser.status === "active"
+                          ? [colors.danger, "#FF453A"]
+                          : [colors.success, "#2EB872"]
+                      }
+                      style={styles.actionButtonGradient}
+                    >
+                      <Ionicons
+                        name={
+                          selectedUser.status === "active"
+                            ? "close-circle-outline"
+                            : "checkmark-circle-outline"
+                        }
+                        size={22}
+                        color="#FFF"
+                      />
+                      <Text style={styles.actionButtonText}>
+                        {selectedUser.status === "active"
+                          ? "Deactivate User"
+                          : "Activate User"}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </ScrollView>
               </>
             )}
           </View>
@@ -273,57 +604,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-  },
-  subtitle: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  overviewStats: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
-  },
-  overviewStatItem: {
+  loadingContainer: {
     flex: 1,
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
   },
-  overviewStatValue: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  overviewStatLabel: {
-    fontSize: fontSize.xs,
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: fontSize.md,
     color: colors.textSecondary,
-    marginTop: 2,
   },
-  overviewStatDivider: {
-    width: 1,
-    backgroundColor: colors.borderLight,
+  headerGradient: {
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  headerBadge: {
+    fontSize: fontSize.sm,
+    color: colors.textWhite + "CC",
+    fontWeight: "600",
+    marginBottom: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: fontSize.xxxl,
+    fontWeight: "700",
+    color: colors.textWhite,
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textWhite + "CC",
+  },
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.textWhite + "20",
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
     paddingHorizontal: spacing.md,
     height: 48,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.md,
   },
   searchInput: {
     flex: 1,
@@ -331,61 +668,116 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textPrimary,
   },
-  listContent: {
-    padding: spacing.md,
+  statsOverview: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.lg,
+    marginTop: -spacing.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  userCard: {
+  statOverviewCard: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    padding: spacing.sm,
+    alignItems: "center",
+    ...shadows.md,
+  },
+  statIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  statOverviewValue: {
+    fontSize: fontSize.md,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  statOverviewLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  listContent: {
+    padding: spacing.lg,
+    paddingTop: 0,
+  },
+  userCard: {
     marginBottom: spacing.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.xl,
+    overflow: "hidden",
+    ...shadows.lg,
+  },
+  cardGradient: {
+    padding: 1,
+  },
+  cardContent: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl - 1,
+    padding: spacing.md,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
   },
   avatarText: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: "700",
     color: colors.textWhite,
   },
   userInfo: {
     flex: 1,
-    marginLeft: spacing.sm,
   },
   userName: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 2,
   },
   userEmail: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
   },
   statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.lg,
+    gap: 4,
   },
   statusActive: {
-    backgroundColor: colors.success + '15',
+    backgroundColor: colors.success + "15",
   },
   statusInactive: {
-    backgroundColor: colors.danger + '15',
+    backgroundColor: colors.danger + "15",
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    backgroundColor: colors.success,
+  },
+  dotInactive: {
+    backgroundColor: colors.danger,
   },
   statusText: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    fontWeight: "600",
   },
   statusTextActive: {
     color: colors.success,
@@ -394,161 +786,210 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   statsRow: {
-    flexDirection: 'row',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
   },
   statItem: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  statInfo: {
+    flex: 1,
   },
   statValue: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "700",
     color: colors.textPrimary,
-    marginLeft: spacing.xs,
   },
   statLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    marginLeft: spacing.xs,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: colors.borderLight,
+    marginHorizontal: spacing.xs,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   memberSince: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  memberSinceText: {
     fontSize: fontSize.xs,
     color: colors.textLight,
   },
-  actionsRow: {
-    flexDirection: 'row',
+  viewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.lg,
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.xs,
+  viewButtonText: {
+    fontSize: fontSize.xs,
+    fontWeight: "600",
+    color: colors.primary,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xxxl,
   },
-  emptyText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
+  emptyTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: "600",
+    color: colors.textPrimary,
     marginTop: spacing.md,
   },
-  modalContainer: {
+  emptySubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
+    maxHeight: "90%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: spacing.lg,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
   },
   modalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: fontSize.lg,
+    fontWeight: "700",
+    color: colors.textWhite,
   },
-  modalUserInfo: {
-    alignItems: 'center',
+  modalBody: {
+    padding: spacing.lg,
+  },
+  modalAvatarSection: {
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   modalAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+    ...shadows.lg,
   },
   modalAvatarText: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontSize: fontSize.xxxl,
+    fontWeight: "700",
     color: colors.textWhite,
   },
   modalUserName: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontSize: fontSize.xl,
+    fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 4,
   },
   modalUserEmail: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-  modalDetails: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+  infoSection: {
     marginBottom: spacing.lg,
   },
-  modalDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  infoSectionTitle: {
+    fontSize: fontSize.md,
+    fontWeight: "600",
+    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
-  modalDetailText: {
+  infoCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  infoLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginLeft: spacing.md,
+    width: 60,
+  },
+  infoValue: {
     fontSize: fontSize.sm,
     color: colors.textPrimary,
-    marginLeft: spacing.sm,
-  },
-  modalStats: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  modalStatItem: {
     flex: 1,
-    alignItems: 'center',
+  },
+  statsContainer: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  statBox: {
+    flex: 1,
     backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginRight: spacing.sm,
+    alignItems: "center",
   },
-  modalStatValue: {
+  statBoxValue: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.primary,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
   },
-  modalStatLabel: {
+  statBoxLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  modalButton: {
+  actionButton: {
+    marginBottom: spacing.xl,
+    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+  },
+  actionButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
+    gap: spacing.sm,
   },
-  modalButtonWarning: {
-    backgroundColor: colors.warning,
-  },
-  modalButtonSuccess: {
-    backgroundColor: colors.success,
-  },
-  modalButtonText: {
+  actionButtonText: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textWhite,
+  },
+  deactivateButton: {
+    marginTop: spacing.md,
+  },
+  activateButton: {
+    marginTop: spacing.md,
   },
 });

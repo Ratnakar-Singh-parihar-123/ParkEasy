@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,61 +9,75 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/context/AuthContext';
-import { InputField, CustomButton } from '../../src/components';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../src/context/AuthContext";
+import { InputField, CustomButton } from "../../src/components";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
+  const [role, setRole] = useState("user");
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const validateForm = () => {
     const newErrors = {};
-    if (!name) {
-      newErrors.name = 'Name is required';
+
+    if (!name) newErrors.name = "Name is required";
+    if (!email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "Invalid email";
+
+    if (!password) newErrors.password = "Password required";
+    else if (password.length < 6) newErrors.password = "Min 6 characters";
+
+    if (!confirmPassword) newErrors.confirmPassword = "Confirm password";
+    else if (password !== confirmPassword)
+      newErrors.confirmPassword = "Passwords not match";
+
+    if (role === "admin" && !adminSecret) {
+      newErrors.adminSecret = "Admin secret required";
     }
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Invalid email format';
-    }
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async () => {
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
-      const result = await register(name, email, password);
+      const result = await register(
+        name,
+        email,
+        password,
+        role === "admin" ? adminSecret : "",
+      );
+
       if (result.success) {
-        router.replace('/(tabs)/home');
+        Alert.alert("Success", "Account created 🎉");
+        router.replace("/(tabs)/home");
       } else {
-        Alert.alert('Registration Failed', result.error || 'Something went wrong');
+        Alert.alert("Error", result.error);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } catch {
+      Alert.alert("Error", "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -72,39 +86,25 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-
-          {/* Header */}
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {/* HEADER */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="person-add" size={40} color={colors.primary} />
+            <View style={styles.logo}>
+              <Ionicons name="person-add" size={34} color="#fff" />
             </View>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started</Text>
+            <Text style={styles.subtitle}>Sign up & start exploring 🚀</Text>
           </View>
 
-          {/* Register Form */}
-          <View style={styles.formContainer}>
+          {/* CARD */}
+          <View style={styles.card}>
             <InputField
               label="Full Name"
               value={name}
               onChangeText={setName}
-              placeholder="Enter your full name"
-              autoCapitalize="words"
               icon="person-outline"
               error={errors.name}
             />
@@ -113,18 +113,54 @@ export default function RegisterScreen() {
               label="Email"
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
               icon="mail-outline"
               error={errors.email}
             />
+
+            {/* ROLE SELECT */}
+            <Text style={styles.roleTitle}>Choose Role</Text>
+
+            <View style={styles.roleWrapper}>
+              {["user", "admin"].map((item) => {
+                const active = role === item;
+
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => setRole(item)}
+                    style={[styles.roleBtn, active && styles.roleBtnActive]}
+                  >
+                    <Ionicons
+                      name={item === "admin" ? "shield-checkmark" : "person"}
+                      size={18}
+                      color={active ? "#fff" : colors.textPrimary}
+                    />
+                    <Text
+                      style={[styles.roleText, active && { color: "#fff" }]}
+                    >
+                      {item.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ADMIN SECRET */}
+            {role === "admin" && (
+              <InputField
+                label="Admin Secret"
+                value={adminSecret}
+                onChangeText={setAdminSecret}
+                secureTextEntry
+                icon="key-outline"
+                error={errors.adminSecret}
+              />
+            )}
 
             <InputField
               label="Password"
               value={password}
               onChangeText={setPassword}
-              placeholder="Create a password"
               secureTextEntry
               icon="lock-closed-outline"
               error={errors.password}
@@ -134,26 +170,24 @@ export default function RegisterScreen() {
               label="Confirm Password"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Confirm your password"
               secureTextEntry
               icon="lock-closed-outline"
               error={errors.confirmPassword}
             />
 
             <CustomButton
-              title="Create Account"
+              title={loading ? "Creating..." : "Create Account"}
               onPress={handleRegister}
               loading={loading}
-              size="large"
-              style={styles.registerButton}
+              style={styles.btn}
             />
           </View>
 
-          {/* Login Link */}
+          {/* FOOTER */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account?</Text>
+            <Text>Already have an account?</Text>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.loginLink}> Sign In</Text>
+              <Text style={styles.login}> Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -165,73 +199,89 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F5F7FB",
   },
-  keyboardView: {
-    flex: 1,
+  scroll: {
+    padding: spacing.lg,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
+
   header: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+    alignItems: "center",
+    marginBottom: spacing.xl,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
+
+  logo: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    ...shadows.md,
   },
+
   title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    fontSize: 24,
+    fontWeight: "700",
   },
+
   subtitle: {
-    fontSize: fontSize.md,
     color: colors.textSecondary,
+    marginTop: 4,
   },
-  formContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xl,
+
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
     padding: spacing.lg,
     ...shadows.lg,
   },
-  registerButton: {
-    width: '100%',
+
+  roleTitle: {
     marginTop: spacing.md,
+    fontWeight: "600",
+    marginBottom: 8,
   },
+
+  roleWrapper: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: spacing.sm,
+  },
+
+  roleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+  },
+
+  roleBtnActive: {
+    backgroundColor: colors.primary,
+  },
+
+  roleText: {
+    fontWeight: "600",
+  },
+
+  btn: {
+    marginTop: spacing.lg,
+    borderRadius: 12,
+  },
+
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.xl,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: spacing.lg,
   },
-  footerText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  loginLink: {
-    fontSize: fontSize.sm,
+
+  login: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

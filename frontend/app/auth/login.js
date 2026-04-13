@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,31 +9,37 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/context/AuthContext';
-import { InputField, CustomButton } from '../../src/components';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../src/context/AuthContext";
+import { InputField, CustomButton } from "../../src/components";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const validateForm = () => {
     const newErrors = {};
     if (!email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = "Invalid email format";
     }
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -41,21 +47,21 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
       const result = await login(email, password);
       if (result.success) {
         if (result.isAdmin) {
-          router.replace('/(admin)/dashboard');
+          router.replace("/(admin)/dashboard");
         } else {
-          router.replace('/(tabs)/home');
+          router.replace("/(tabs)/home");
         }
       } else {
-        Alert.alert('Login Failed', result.error || 'Invalid credentials');
+        Alert.alert("Login Failed", result.error || "Invalid credentials");
       }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +70,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -118,26 +124,12 @@ export default function LoginScreen() {
               size="large"
               style={styles.loginButton}
             />
-
-            {/* Demo Credentials */}
-            <View style={styles.demoContainer}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.demoText}>
-                User: user@gmail.com / 123456
-              </Text>
-            </View>
-            <View style={[styles.demoContainer, styles.adminDemoContainer]}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
-              <Text style={[styles.demoText, styles.adminDemoText]}>
-                Admin: admin@gmail.com / admin123
-              </Text>
-            </View>
           </View>
 
           {/* Register Link */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => router.push('/auth/register')}>
+            <TouchableOpacity onPress={() => router.push("/auth/register")}>
               <Text style={styles.registerLink}> Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -162,21 +154,21 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.xl,
   },
   logoContainer: {
     width: 90,
     height: 90,
     borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.md,
   },
   title: {
     fontSize: fontSize.xxxl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.primary,
     marginBottom: spacing.xs,
   },
@@ -192,7 +184,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -202,42 +194,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: spacing.lg,
   },
   forgotPasswordText: {
     fontSize: fontSize.sm,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginButton: {
-    width: '100%',
+    width: "100%",
   },
-  demoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-    padding: spacing.sm,
-    backgroundColor: colors.borderLight,
-    borderRadius: borderRadius.sm,
-  },
-  demoText: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    marginLeft: spacing.xs,
-  },
-  adminDemoContainer: {
-    marginTop: spacing.xs,
-    backgroundColor: colors.primary + '10',
-  },
+
   adminDemoText: {
     color: colors.primary,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: spacing.xl,
   },
   footerText: {
@@ -247,6 +222,6 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: fontSize.sm,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

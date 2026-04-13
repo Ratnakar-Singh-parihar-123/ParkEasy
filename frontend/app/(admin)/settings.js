@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -7,19 +7,42 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/context/AuthContext';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../src/context/AuthContext";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
 
-const MenuItem = ({ icon, title, subtitle, onPress, showChevron = true, danger = false }) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+const MenuItem = ({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  showChevron = true,
+  danger = false,
+}) => (
+  <TouchableOpacity
+    style={styles.menuItem}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
     <View style={[styles.menuIconContainer, danger && styles.menuIconDanger]}>
-      <Ionicons name={icon} size={22} color={danger ? colors.danger : colors.primary} />
+      <Ionicons
+        name={icon}
+        size={22}
+        color={danger ? colors.danger : colors.primary}
+      />
     </View>
     <View style={styles.menuContent}>
-      <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>{title}</Text>
+      <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>
+        {title}
+      </Text>
       {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
     </View>
     {showChevron && (
@@ -33,37 +56,33 @@ export default function AdminSettings() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout from admin panel?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/auth/login');
-          },
+    Alert.alert("Logout", "Are you sure you want to logout from admin panel?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/auth/login");
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleSwitchToUser = () => {
     Alert.alert(
-      'Switch View',
-      'Switch to user view? You will need to login again as user.',
+      "Switch View",
+      "Switch to user view? You will need to login again as user.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Switch',
+          text: "Switch",
           onPress: async () => {
             await logout();
-            router.replace('/auth/login');
+            router.replace("/auth/login");
           },
         },
-      ]
+      ],
     );
   };
 
@@ -79,11 +98,17 @@ export default function AdminSettings() {
         {/* Admin Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <Ionicons name="shield-checkmark" size={32} color={colors.textWhite} />
+            <Ionicons
+              name="shield-checkmark"
+              size={32}
+              color={colors.textWhite}
+            />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || 'Admin'}</Text>
-            <Text style={styles.profileEmail}>{user?.email || 'admin@gmail.com'}</Text>
+            <Text style={styles.profileName}>{user?.name || "Admin"}</Text>
+            <Text style={styles.profileEmail}>
+              {user?.email || "admin@gmail.com"}
+            </Text>
             <View style={styles.adminBadge}>
               <Text style={styles.adminBadgeText}>Administrator</Text>
             </View>
@@ -228,16 +253,16 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: fontSize.sm,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.primary,
     marginHorizontal: spacing.md,
     padding: spacing.md,
@@ -248,9 +273,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileInfo: {
     flex: 1,
@@ -258,29 +283,29 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textWhite,
   },
   profileEmail: {
     fontSize: fontSize.sm,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     marginTop: 2,
   },
   adminBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
     marginTop: spacing.xs,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   adminBadgeText: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textWhite,
   },
   quickStats: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -290,7 +315,7 @@ const styles = StyleSheet.create({
   },
   quickStatItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   quickStatLabel: {
     fontSize: fontSize.xs,
@@ -299,7 +324,7 @@ const styles = StyleSheet.create({
   },
   quickStatValue: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     marginTop: 2,
   },
@@ -312,11 +337,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   menuContainer: {
@@ -326,8 +351,8 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
@@ -336,12 +361,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '10',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
   },
   menuIconDanger: {
-    backgroundColor: colors.danger + '10',
+    backgroundColor: colors.danger + "10",
   },
   menuContent: {
     flex: 1,
@@ -349,7 +374,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   menuTitleDanger: {
@@ -361,12 +386,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   footerText: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
   },
   footerSubtext: {
