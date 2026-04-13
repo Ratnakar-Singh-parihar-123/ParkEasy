@@ -4,7 +4,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API = axios.create({
-  baseURL: "http://10.93.141.211:8000/api",
+  baseURL: "https://parkeasy-5qpq.onrender.com/api",
 });
 
 API.interceptors.request.use(async (req) => {
@@ -13,8 +13,8 @@ API.interceptors.request.use(async (req) => {
   return req;
 });
 
-// ✅ get my bookings
+//  get my bookings
 export const getMyBookings = () => API.get("/user/my-bookings");
 
-// ✅ cancel booking
+//  cancel booking
 export const cancelBookingApi = (id) => API.put(`/bookings/${id}/cancel`);

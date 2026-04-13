@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ axios instance
 const API = axios.create({
-  baseURL: "http://10.93.141.211:8000/api/admin/parkings",
+  baseURL: "https://parkeasy-5qpq.onrender.com/api/admin/parkings",
 });
 
 // ✅ interceptor yahi likhna hai

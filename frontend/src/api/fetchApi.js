@@ -1,6 +1,6 @@
 // fetchApi.js
 
-const BASE_URL = "http://10.93.141.211:8000"; // direct backend IP
+const BASE_URL = "https://parkeasy-5qpq.onrender.com"; // direct backend IP
 
 // Helper: get token from local storage (ya hardcode for testing)
 const getToken = () => {

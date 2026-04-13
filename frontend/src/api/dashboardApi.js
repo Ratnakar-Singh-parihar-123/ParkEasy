@@ -4,7 +4,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API = axios.create({
-  baseURL: "http://10.93.141.211:8000/api/admin",
+  baseURL: "https://parkeasy-5qpq.onrender.com/api/admin",
 });
 
 // 🔐 token auto attach
