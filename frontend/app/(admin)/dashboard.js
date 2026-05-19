@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 
 import {
   colors,
@@ -33,6 +34,8 @@ export default function AdminDashboard() {
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     fetchDashboardData();
@@ -87,7 +90,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -109,15 +112,12 @@ export default function AdminDashboard() {
                 Welcome back! Here's your overview
               </Text>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#FFF" />
-              {pendingBookings > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {pendingBookings}
-                  </Text>
-                </View>
-              )}
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => router.push("/(admin)/createNotification")}
+            >
+              <Ionicons name="notifications-outline" size={22} color="#FFF" />
+              <View style={styles.notificationBadge} />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -241,7 +241,10 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => router.push("./parkings")}
+            >
               <LinearGradient
                 colors={[colors.primary, colors.primaryDark]}
                 style={styles.quickActionIcon}
@@ -251,7 +254,10 @@ export default function AdminDashboard() {
               <Text style={styles.quickActionText}>Add Parking</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => router.push("./bookings")}
+            >
               <LinearGradient
                 colors={[colors.success, "#2EB872"]}
                 style={styles.quickActionIcon}
@@ -261,7 +267,10 @@ export default function AdminDashboard() {
               <Text style={styles.quickActionText}>View Bookings</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => router.push("./reports")}
+            >
               <LinearGradient
                 colors={[colors.warning, "#FF9F0A"]}
                 style={styles.quickActionIcon}
@@ -271,7 +280,10 @@ export default function AdminDashboard() {
               <Text style={styles.quickActionText}>Reports</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => router.push("./settings")}
+            >
               <LinearGradient
                 colors={[colors.info, "#5E5CE6"]}
                 style={styles.quickActionIcon}
@@ -335,7 +347,7 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Bookings</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("./bookings")}>
               <Text style={styles.seeAllText}>See All →</Text>
             </TouchableOpacity>
           </View>
@@ -388,7 +400,7 @@ export default function AdminDashboard() {
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -425,6 +437,7 @@ const styles = StyleSheet.create({
     color: colors.textWhite + "CC",
     fontWeight: "600",
     marginBottom: spacing.xs,
+    paddingTop: 7,
   },
   headerTitle: {
     fontSize: fontSize.xxxl,
@@ -443,6 +456,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textWhite + "20",
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: 7,
   },
   notificationBadge: {
     position: "absolute",
@@ -464,6 +478,7 @@ const styles = StyleSheet.create({
   statsWrapper: {
     marginTop: -spacing.lg,
     paddingHorizontal: spacing.lg,
+    paddingTop: 30,
   },
   statsGrid: {
     flexDirection: "row",

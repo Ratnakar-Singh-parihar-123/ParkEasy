@@ -1,8 +1,8 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSize } from '../../src/styles/theme';
-import { Platform } from 'react-native';
+import React from "react";
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, fontSize } from "../../src/styles/theme";
+import { Platform } from "react-native";
 
 export default function TabLayout() {
   return (
@@ -15,23 +15,23 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.borderLight,
-          height: Platform.OS === 'ios' ? 88 : 65,
+          height: Platform.OS === "ios" ? 88 : 65,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          paddingBottom: Platform.OS === "ios" ? 28 : 10,
         },
         tabBarLabelStyle: {
           fontSize: fontSize.xs,
-          fontWeight: '600',
+          fontWeight: "600",
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'home' : 'home-outline'}
+              name={focused ? "home" : "home-outline"}
               size={24}
               color={color}
             />
@@ -41,10 +41,36 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          title: 'My Bookings',
+          title: "My Bookings",
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'calendar' : 'calendar-outline'}
+              name={focused ? "calendar" : "calendar-outline"}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notification"
+        options={{
+          title: "Notifications",
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? "notifications" : "notifications-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ReportScreen"
+        options={{
+          title: "Report Issue",
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? "bug" : "bug-outline"}
               size={24}
               color={color}
             />
@@ -54,14 +80,50 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'person' : 'person-outline'}
+              name={focused ? "person" : "person-outline"}
               size={24}
               color={color}
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="legalInformationScreen"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="helpCenterScreen"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="personalInformation"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="contactUs"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="myVehicles"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="paymentMethods"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

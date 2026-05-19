@@ -91,10 +91,13 @@ export default function HomeScreen() {
         <SafeAreaView>
           <View style={styles.appHeader}>
             <View>
-              <Text style={styles.greeting}>Welcome, Back! 👋</Text>
+              <Text style={styles.greeting}>Welcome, Back! </Text>
               <Text style={styles.appName}>ParkEasy</Text>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => router.push("/(tabs)/notification")}
+            >
               <Ionicons name="notifications-outline" size={22} color="#FFF" />
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
@@ -449,6 +452,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: -spacing.lg,
     gap: spacing.md,
+    paddingTop: 30,
   },
   statCard: {
     flex: 1,

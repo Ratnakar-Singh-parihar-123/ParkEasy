@@ -112,11 +112,13 @@ export default function LoginScreen() {
               icon="lock-closed-outline"
               error={errors.password}
             />
-
-            <TouchableOpacity style={styles.forgotPassword}>
+            {/* forget password  */}
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={() => router.push("/auth/forgetPassword")}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-
             <CustomButton
               title="Sign In"
               onPress={handleLogin}

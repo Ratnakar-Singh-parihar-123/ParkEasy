@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -7,19 +7,42 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/context/AuthContext';
-import { colors, spacing, borderRadius, fontSize, shadows } from '../../src/styles/theme';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../src/context/AuthContext";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  shadows,
+} from "../../src/styles/theme";
 
-const MenuItem = ({ icon, title, subtitle, onPress, showChevron = true, danger = false }) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+const MenuItem = ({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  showChevron = true,
+  danger = false,
+}) => (
+  <TouchableOpacity
+    style={styles.menuItem}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
     <View style={[styles.menuIconContainer, danger && styles.menuIconDanger]}>
-      <Ionicons name={icon} size={22} color={danger ? colors.danger : colors.primary} />
+      <Ionicons
+        name={icon}
+        size={22}
+        color={danger ? colors.danger : colors.primary}
+      />
     </View>
     <View style={styles.menuContent}>
-      <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>{title}</Text>
+      <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>
+        {title}
+      </Text>
       {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
     </View>
     {showChevron && (
@@ -33,21 +56,17 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/auth/login');
-          },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/auth/login");
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -62,12 +81,18 @@ export default function ProfileScreen() {
         <View style={styles.userCard}>
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>
-              {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+              {user?.name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "U"}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.name || 'User'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+            <Text style={styles.userName}>{user?.name || "User"}</Text>
+            <Text style={styles.userEmail}>
+              {user?.email || "email@example.com"}
+            </Text>
           </View>
           <TouchableOpacity style={styles.editButton}>
             <Ionicons name="pencil" size={18} color={colors.primary} />
@@ -87,7 +112,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>$223</Text>
+            <Text style={styles.statNumber}>₹223</Text>
             <Text style={styles.statLabel}>Saved</Text>
           </View>
         </View>
@@ -100,19 +125,19 @@ export default function ProfileScreen() {
               icon="person-outline"
               title="Personal Information"
               subtitle="Name, email, phone"
-              onPress={() => {}}
+              onPress={() => router.push("./personalInformation")}
             />
             <MenuItem
               icon="car-outline"
               title="My Vehicles"
-              subtitle={user?.vehicleNumber || 'Add your vehicle'}
-              onPress={() => {}}
+              subtitle={user?.vehicleNumber || "Add your vehicle"}
+              onPress={() => router.push("./myVehicles")}
             />
             <MenuItem
               icon="card-outline"
               title="Payment Methods"
               subtitle="Add or manage cards"
-              onPress={() => {}}
+              onPress={() => router.push("./paymentMethods")}
             />
           </View>
         </View>
@@ -125,20 +150,15 @@ export default function ProfileScreen() {
               icon="notifications-outline"
               title="Notifications"
               subtitle="Push, email, SMS"
-              onPress={() => {}}
+              onPress={() => router.push("./notification")}
             />
-            <MenuItem
-              icon="moon-outline"
-              title="Appearance"
-              subtitle="Light mode"
-              onPress={() => {}}
-            />
+            {/* 
             <MenuItem
               icon="language-outline"
               title="Language"
               subtitle="English"
               onPress={() => {}}
-            />
+            /> */}
           </View>
         </View>
 
@@ -150,19 +170,19 @@ export default function ProfileScreen() {
               icon="help-circle-outline"
               title="Help Center"
               subtitle="FAQs, guides"
-              onPress={() => {}}
+              onPress={() => router.push("./helpCenterScreen")}
             />
             <MenuItem
               icon="chatbubble-outline"
               title="Contact Us"
               subtitle="Get in touch"
-              onPress={() => {}}
+              onPress={() => router.push("./contactUs")}
             />
             <MenuItem
               icon="document-text-outline"
               title="Terms & Privacy"
               subtitle="Legal information"
-              onPress={() => {}}
+              onPress={() => router.push("./legalInformationScreen")}
             />
           </View>
         </View>
@@ -183,7 +203,9 @@ export default function ProfileScreen() {
         {/* App Version */}
         <View style={styles.versionContainer}>
           <Text style={styles.versionText}>ParkEasy v1.0.0</Text>
-          <Text style={styles.memberSince}>Member since {user?.memberSince || 'January 2025'}</Text>
+          <Text style={styles.memberSince}>
+            Member since {user?.memberSince || "January 2025"}
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -197,17 +219,17 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: 35,
     paddingBottom: spacing.sm,
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     padding: spacing.md,
@@ -219,12 +241,12 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textWhite,
   },
   userInfo: {
@@ -233,7 +255,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   userEmail: {
@@ -245,12 +267,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary + '10',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -260,11 +282,11 @@ const styles = StyleSheet.create({
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statNumber: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.primary,
   },
   statLabel: {
@@ -281,11 +303,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   menuContainer: {
@@ -295,8 +317,8 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
@@ -305,12 +327,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '10',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
   },
   menuIconDanger: {
-    backgroundColor: colors.danger + '10',
+    backgroundColor: colors.danger + "10",
   },
   menuContent: {
     flex: 1,
@@ -318,7 +340,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   menuTitleDanger: {
@@ -330,7 +352,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   versionContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   versionText: {

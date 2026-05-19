@@ -1,5 +1,6 @@
 import Booking from "../models/Booking.js";
 import Parking from "../models/Parking.js";
+import Report from "../models/Report.js";
 
 //  Get all parkings
 export const getAllParkings = async (req, res) => {
@@ -158,5 +159,106 @@ export const cancelBooking = async (req, res) => {
   } catch (error) {
     console.error("Cancel Booking Error:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Create report
+export const createReport = async (req, res) => {
+  try {
+    const { userId, name, email, issueType, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const report = await Report.create({
+      userId,
+      name,
+      email,
+      issueType,
+      message,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Report submitted successfully",
+      report,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await Report.findByIdAndUpdate(
+      id,
+      {
+        status: "Resolved",
+      },
+      { new: true },
+    );
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Report not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Report resolved",
+      report,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const deleteReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await Report.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Report deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//. gel all reports
+export const getUserReports = async (req, res) => {
+  try {
+    const reports = await Report.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: reports.length,
+      reports,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

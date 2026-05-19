@@ -134,29 +134,29 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Management</Text>
           <View style={styles.menuContainer}>
-            <MenuItem
+            {/* <MenuItem
               icon="business-outline"
               title="Business Settings"
               subtitle="Name, logo, contact info"
               onPress={() => {}}
-            />
+            /> */}
             <MenuItem
               icon="pricetag-outline"
               title="Pricing Rules"
               subtitle="Set default pricing, discounts"
-              onPress={() => {}}
+              onPress={() => router.push("./pricingRules")}
             />
-            <MenuItem
+            {/* <MenuItem
               icon="time-outline"
               title="Operating Hours"
               subtitle="Default open/close times"
               onPress={() => {}}
-            />
+            /> */}
             <MenuItem
-              icon="notifications-outline"
-              title="Notifications"
-              subtitle="Push, email settings"
-              onPress={() => {}}
+              icon="notifications-circle-outline"
+              title="Create Notifications"
+              subtitle="Send announcements to users"
+              onPress={() => router.push("./createNotification")}
             />
           </View>
         </View>
@@ -165,30 +165,30 @@ export default function AdminSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Reports & Analytics</Text>
           <View style={styles.menuContainer}>
-            <MenuItem
+            {/* <MenuItem
               icon="bar-chart-outline"
               title="Revenue Reports"
               subtitle="Daily, weekly, monthly"
               onPress={() => {}}
-            />
-            <MenuItem
+            /> */}
+            {/* <MenuItem
               icon="analytics-outline"
               title="Booking Analytics"
               subtitle="Trends and insights"
               onPress={() => {}}
-            />
+            /> */}
             <MenuItem
               icon="people-outline"
               title="User Reports"
               subtitle="Registrations, activity"
-              onPress={() => {}}
+              onPress={() => router.push("./UserReports")}
             />
-            <MenuItem
+            {/* <MenuItem
               icon="download-outline"
               title="Export Data"
               subtitle="CSV, PDF exports"
               onPress={() => {}}
-            />
+            /> */}
           </View>
         </View>
 
@@ -200,7 +200,7 @@ export default function AdminSettings() {
               icon="key-outline"
               title="Change Password"
               subtitle="Update admin password"
-              onPress={() => {}}
+              onPress={() => router.push("./changePassword")}
             />
             <MenuItem
               icon="swap-horizontal-outline"
@@ -254,6 +254,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.primary,
     fontWeight: "600",
+    paddingTop: 10,
   },
   title: {
     fontSize: fontSize.xxl,

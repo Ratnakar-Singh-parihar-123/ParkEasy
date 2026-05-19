@@ -3,7 +3,11 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
     email: {
       type: String,
@@ -17,7 +21,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
-      select: false, // 🔐 hidden by default
+      select: false,
     },
 
     role: {
@@ -25,29 +29,56 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+
     isActive: {
       type: Boolean,
       default: true,
     },
 
     phone: String,
+
     address: String,
+
     avatar: String,
+
+    resetOTP: {
+      type: String,
+    },
+
+    resetOTPExpire: {
+      type: Date,
+    },
+
+    otpResendTime: {
+      type: Date,
+    },
+
+    isOTPVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
-// 🔐 Hash password
+// HASH PASSWORD
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  if (!this.isModified("password")) {
+    return;
+  }
 
   const salt = await bcrypt.genSalt(10);
+
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// 🔑 Compare password
+// COMPARE PASSWORD
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-export default mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+export default User;

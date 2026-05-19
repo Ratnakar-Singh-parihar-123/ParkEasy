@@ -674,6 +674,7 @@ const styles = StyleSheet.create({
     marginTop: -spacing.lg,
     gap: spacing.sm,
     marginBottom: spacing.md,
+    paddingTop: 30,
   },
   statOverviewCard: {
     flex: 1,

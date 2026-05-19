@@ -667,6 +667,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: -spacing.lg,
     marginBottom: spacing.md,
+    paddingTop: 30,
   },
   statsRow: {
     flexDirection: "row",
